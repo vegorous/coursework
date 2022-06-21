@@ -1,0 +1,2701 @@
+---
+title: "Kурсовая работа"
+author: "Егор Александров"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(modelsummary)
+library(data.table)
+library(kableExtra)
+library(knitr)
+library(performance)
+library(plm)
+library(car)
+library(Hmisc)
+library(corrplot)
+library(lmtest)
+
+data = read_excel("dataKP-2.xlsx", sheet = "long_data")
+View(data)
+
+data$abit_b = as.integer(round(data$abit_b))
+data$abit_p = as.integer(round(data$abit_p))
+data$pps = as.integer(round(data$pps))
+
+options(scipen=999)
+```
+
+
+```{r}
+data %>% filter(codname == 'fefu') %>%  ggplot(aes(x = year, y = articles)) + geom_line(color = 'blue') + labs(title = "ДВФУ: общее число публикаций (типа: article)",
+       x = "",
+       y = "") + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
+```
+
+# УЧАСТНИКИ 2013
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов-участников с 2013 г.",
+       x = "",
+       y = "",
+       color = '') + 
+ theme_classic() +
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9)) 
+
+unique(data$university_rus)
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(
+  title = "Количество публикаций (типа: article) вузов-участников с 2013 г.,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() + 
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 7))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций (типа: article) вузов-участников с 2013 г.\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic()  + 
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(pps))%>%  ggplot(aes(x = year, y = pps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = " сотрудники ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic()  + 
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций (типа: article) вузов-участников с 2013 г.\nна одного сотрудника ППС\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ"))%>% ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов-участников с 2013 г.",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 8))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ"))%>%  ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов-участников с 2013 г., \nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов-участников с 2013 г.\nв расчете на одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов-участников с 2013 г.\nв расчете на одного сотрудника ППС,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+# УЧАСТНИКИ 2015
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов-участников с 2015 г.",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+
+unique(data$university_rus)
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(
+  title = "Количество публикаций (типа: article) вузов-участников с 2015 г.,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 7))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов-участников с 2015 г.\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = pps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций (типа: article) вузов-участников с 2015 г.\nна одного сотрудника ППС\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ"))%>% ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов-участников с 2015 г.",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 8))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ"))%>%  ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов-участников с 2015 г., \nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов-участников с 2015 г.\nв расчете на одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов-участников с 2015 г.\nв расчете на одного сотрудника ППС,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+# Контрольная группа 
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ", "НЭТИ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов контрольной группы",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+
+unique(data$university_rus)
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ"))%>%  ggplot(aes(x = year, y = articles, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(
+  title = "Количество публикаций (типа: article) вузов контрольной группы,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = pps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Сотрудники ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = artperpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ"))%>% ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов контрольной группы",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 8))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ"))%>%  ggplot(aes(x = year, y = q1, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2013), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов контрольной группы, \nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций Q1 вузов контрольной группы\nв расчете на одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>% ggplot(aes(x = year, y = q1perpps, color=university_rus)) + geom_line()+ geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(title = "Количество публикаций Q1 вузов контрольной группы\nв расчете на одного сотрудника ППС,\nлогарифмическая шкала",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::pretty_breaks(n = 4))
+```
+
+
+```{r}
+data %>% ggplot()+ geom_histogram(aes(x = data$articles))
+data %>% ggplot()+ geom_histogram(aes(x = log(data$articles)))
+data %>% ggplot()+ geom_histogram(aes(x = data$artperpps))
+data %>% ggplot()+ geom_histogram(aes(x = log(data$artperpps)))
+```
+
+
+```{r}
+data %>% ggplot()+ geom_histogram(aes(x = q1))
+data %>% ggplot()+ geom_histogram(aes(x = log(q1+1)))
+data %>% ggplot()+ geom_histogram(aes(x = q1perpps))
+data %>% ggplot()+ geom_histogram(aes(x = log(q1+1)))
+data %>% filter(is.infinite(log(q1+1)))
+```
+
+
+```{r}
+data %>% ggplot()+ geom_boxplot(aes(x = articles))
+data %>% ggplot()+ geom_boxplot(aes(x = q1))
+data %>% ggplot()+ geom_boxplot(aes(x = artperpps))
+data %>% ggplot()+ geom_boxplot(aes(x = q1perpps))
+```
+
+
+# Articles tests
+
+## ttest-ы
+
+```{r}
+# ttest articles 2013+2015 vs control
+t.test(data$articles ~ data$control)
+'Welch Two Sample t-test
+
+data:  data$articles by data$control
+t = 11.905, df = 360.36, p-value < 2.2e-16
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ 293.0298 408.9995
+sample estimates:
+mean in group 0 mean in group 1 
+       499.5646        148.5500 '
+
+# ttest articles 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+t.test(data1315$articles ~ data1315$`2013`)
+'Welch Two Sample t-test
+
+data:  data1315$articles by data1315$`2013`
+t = -7.4958, df = 244.74, p-value = 1.204e-12
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -449.4304 -262.3838
+sample estimates:
+mean in group 0 mean in group 1 
+       245.3452        601.2524 '
+
+# ttest articles 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+t.test(data13con$articles ~ data13con$`2013`)
+'Welch Two Sample t-test
+
+data:  data13con$articles by data13con$`2013`
+t = -12.726, df = 243.22, p-value < 2.2e-16
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -522.7718 -382.6330
+sample estimates:
+mean in group 0 mean in group 1 
+       148.5500        601.2524 '
+
+# ttest articles 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+t.test(data15con$articles ~ data15con$`2015`)
+'Welch Two Sample t-test
+
+data:  data15con$articles by data15con$`2015`
+t = -2.8103, df = 98.257, p-value = 0.005974
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -165.14464  -28.44584
+sample estimates:
+mean in group 0 mean in group 1 
+       148.5500        245.3452 '
+```
+
+## tests wilcox
+
+```{r}
+# wilcox.test articles 2013+2015 vs control
+wilcox.test(data$articles ~ data$control)
+'Wilcoxon rank sum test with continuity correction
+
+data:  data$articles by data$control
+W = 31190, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test articles 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test(data1315$articles ~ data1315$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  data1315$articles by data1315$`2013`
+W = 4195.5, p-value = 2.189e-12
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test articles 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test(data13con$articles ~ data13con$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  data13con$articles by data13con$`2013`
+W = 4853.5, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test articles 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test(data15con$articles ~ data15con$`2015`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  data15con$articles by data15con$`2015`
+W = 5116, p-value = 0.104
+alternative hypothesis: true location shift is not equal to 0'
+```
+
+## artperpps
+
+```{r}
+# wilcox.test artperpps 2013+2015 vs control
+wilcox.test((data$artperpps) ~ data$control)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data$artperpps) by data$control
+W = 14662, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test artperpps 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test((data1315$artperpps) ~ data1315$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data1315$artperpps) by data1315$`2013`
+W = 1126, p-value = 1.235e-13
+alternative hypothesis: true location shift is not equal to 0
+'
+
+# wilcox.test artperpps 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test((data13con$artperpps) ~ data13con$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data13con$artperpps) by data13con$`2013`
+W = 587, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test artperpps 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test((data15con$artperpps) ~ data15con$`2015`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data15con$artperpps) by data15con$`2015`
+W = 1761, p-value = 0.005805
+alternative hypothesis: true location shift is not equal to 0
+'
+```
+
+## Q1
+
+```{r}
+# wilcox.test q1 2013+2015 vs control
+wilcox.test((data$q1) ~ data$control)
+
+# wilcox.test q1 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test((data1315$q1) ~ data1315$`2013`)
+
+# wilcox.test q1 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test((data13con$q1) ~ data13con$`2013`)
+
+# wilcox.test q1 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test((data15con$q1) ~ data15con$`2015`)
+
+
+# wilcox.test q1 2013+2015 vs control
+wilcox.test(log(data$q1) ~ data$control)
+
+# wilcox.test q1 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test(log(data1315$q1) ~ data1315$`2013`)
+
+# wilcox.test q1 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test(log(data13con$q1) ~ data13con$`2013`)
+
+# wilcox.test q1 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test(log(data15con$q1) ~ data15con$`2015`)
+```
+
+## q1perpps
+
+```{r}
+# wilcox.test q1perpps 2013+2015 vs control
+wilcox.test((data$q1perpps) ~ data$control)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data$q1perpps) by data$control
+W = 14502, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test q1perpps 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test((data1315$q1perpps) ~ data1315$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data1315$q1perpps) by data1315$`2013`
+W = 1470, p-value = 1.549e-10
+alternative hypothesis: true location shift is not equal to 0'
+
+# wilcox.test q1perpps 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test((data13con$q1perpps) ~ data13con$`2013`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data13con$q1perpps) by data13con$`2013`
+W = 924.5, p-value < 2.2e-16
+alternative hypothesis: true location shift is not equal to 0
+'
+# wilcox.test q1perpps 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test((data15con$q1perpps) ~ data15con$`2015`)
+'Wilcoxon rank sum test with continuity correction
+
+data:  (data15con$q1perpps) by data15con$`2015`
+W = 1584, p-value = 0.0004848
+alternative hypothesis: true location shift is not equal to 0'
+```
+
+## ege_b
+
+```{r}
+# wilcox.test ege_b 2013+2015 vs control
+wilcox.test((data$ege_b) ~ data$control)
+
+# wilcox.test ege_b 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test((data1315$ege_b) ~ data1315$`2013`)
+
+# wilcox.test ege_b 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test((data13con$ege_b) ~ data13con$`2013`)
+
+# wilcox.test ege_b 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test((data15con$ege_b) ~ data15con$`2015`)
+
+```
+
+## ege_p 
+
+```{r}
+# wilcox.test ege_p 2013+2015 vs control
+wilcox.test((data$ege_p) ~ data$control)
+
+# wilcox.test ege_p 2013 vs 2015
+data1315 = data %>% filter(control == 0)
+wilcox.test((data1315$ege_p) ~ data1315$`2013`)
+
+# wilcox.test ege_p 2013 vs control
+data13con = data %>% filter(`2015` == 0)
+wilcox.test((data13con$ege_p) ~ data13con$`2013`)
+
+# wilcox.test ege_p 2015 vs control
+data15con = data %>% filter(`2013` == 0)
+wilcox.test((data15con$ege_p) ~ data15con$`2015`)
+
+```
+
+Для проверки распределения
+
+```{r}
+shapiro.test((data$articles))
+```
+
+Описательная статистика
+
+```{r}
+# напишем функцию для генерации таблицы с описательными статистиками 
+statistics = function(data){
+  data.frame(sapply(data, function(x) c(
+    'Obs.' = sum(!is.na(x), na.rm = TRUE),
+    "Minimum" = round(min(x, na.rm = TRUE), 1),
+    "Maximum" = round(max(x, na.rm = TRUE), 1),
+    "Mean"= round(mean(x, na.rm = TRUE), 1),
+    "Median" = round(median(x, na.rm = TRUE), 1),
+    'Std. Dev.' = round(sd(x, na.rm = TRUE), 1) )))
+}
+data_num_art = data %>% select(articles, q1, artperpps, q1perpps, pps)
+
+statart = t(data.frame(statistics(data_num_art)))
+view(stat)
+
+data_num_ege = data %>% select(ege_b, ege_p, abit_b, abit_p)
+
+statege = t(data.frame(statistics(data_num_ege)))
+view(statege)
+```
+
+Графики распределения
+
+```{r}
+ggplot(data, aes(x = articles))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((data$articles)), sd = sd((data$articles))), color = "darkred")+ 
+  labs(title = "Общее число публикаций",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(data, aes(x = log(articles)))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean(log(data$articles)), sd = sd(log(data$articles))), color = "darkred")+ 
+  labs(title = "Логарифм общего числа публикаций",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = artperpps))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$artperpps)), sd = sd(dataclear$artperpps)), color = "darkred")+ 
+  labs(title = "Общее число публикаций на сотрудника ППС",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = q1))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$q1)), sd = sd(dataclear$q1)), color = "darkred")+ 
+  labs(title = "Общее число публикаций Q1",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = log(q1perpps)))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean(log(dataclear$q1perpps)), sd = sd(log(dataclear$q1perpps))), color = "darkred")+ 
+  labs(title = "Логарифм числа публикаций Q1",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = q1perpps))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$q1perpps)), sd = sd(dataclear$q1perpps)), color = "darkred")+ 
+  labs(title = "Число публикаций Q1 на сотрудника ППС",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = ege_b))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$ege_b)), sd = sd(dataclear$ege_b)), color = "darkred")+ 
+  labs(title = "Средний балл ЕГЭ поступивших, бюджетный прием",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = ege_p))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$ege_p)), sd = sd(dataclear$ege_p)), color = "darkred")+ 
+  labs(title = "Средний балл ЕГЭ поступивших, платный прием",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = abit_b))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$abit_b)), sd = sd(dataclear$abit_b)), color = "darkred")+ 
+  labs(title = "Число поступивших, бюджетный прием",
+       x = "",
+       y = "") 
+```
+
+
+```{r}
+ggplot(dataclear, aes(x = abit_p))+ geom_histogram(aes(y = ..density..), fill = "lightsteelblue", color = "#000099")  + geom_density(aes(y = ..density..), color = "dodgerblue") + 
+theme_classic() +  stat_function(fun = dnorm, args = list(mean = mean((dataclear$abit_p)), sd = sd(dataclear$abit_p)), color = "darkred")+ 
+  labs(title = "Число поступивших, платный прием",
+       x = "",
+       y = "") 
+```
+
+## Матрица корреляции
+
+```{r}
+data_mat = data %>% select(articles, q1, ege_b, ege_p, abit_b, abit_p, pps)
+view(data_mat)
+knitr::kable(data_mat) %>% kable_styling() 
+```
+
+```{r}
+# создадим функцию для матрицы корреляции
+data_cor= function(data){
+  as.matrix(round(cor(data, use = "pairwise.complete.obs", method = "pearson"), 3))
+}
+corrtable = data.frame(data_cor(data_mat))
+knitr::kable(corrtable) %>% kable_styling() 
+
+# преобразуем матрицу
+upper = corrtable 
+upper[upper.tri(corrtable, diag = TRUE)] = ""
+upper = as.data.frame(upper)
+upper = upper %>% select (-pps)
+
+# Hmisc::rcorr(as.matrix(data_mat))
+```
+
+```{r}
+correlation_matrix = function(df, 
+                               type = "pearson",
+                               digits = 3, 
+                               decimal.mark = ",",
+                               use = "all", 
+                               show_significance = TRUE, 
+                               replace_diagonal = FALSE, 
+                               replacement = ""){
+    stopifnot({
+    is.numeric(digits)
+    digits >= 0
+    use %in% c("all", "upper", "lower")
+    is.logical(replace_diagonal)
+    is.logical(show_significance)
+    is.character(replacement)
+  })
+  require(Hmisc)
+  
+  isNumericOrBoolean = vapply(df, function(x) is.numeric(x) | is.logical(x), logical(1))
+  if (sum(!isNumericOrBoolean) > 0) {
+    cat('Dropping non-numeric/-boolean column(s):', paste(names(isNumericOrBoolean)[!isNumericOrBoolean], collapse = ', '), '\n\n')
+  }
+  df = df[isNumericOrBoolean]
+  
+  x = as.matrix(df)
+  
+  correlation_matrix = Hmisc::rcorr(x, type = type)
+  R = correlation_matrix$r 
+  p = correlation_matrix$P 
+  
+  Rformatted = formatC(R, format = 'f', digits = digits, decimal.mark = decimal.mark)
+  
+    if (sum(!is.na(R) & R < 0) > 0) {
+    Rformatted = ifelse(!is.na(R) & R > 0, paste0(" ", Rformatted), Rformatted)
+  }
+
+  if (show_significance) {
+    stars = ifelse(is.na(p), "", ifelse(p < .001, "***", ifelse(p < .01, "**", ifelse(p < .05, "*", ""))))
+    Rformatted = paste0(Rformatted, stars)
+  }
+  
+  max_length = max(nchar(Rformatted))
+  Rformatted = vapply(Rformatted, function(x) {
+    current_length = nchar(x)
+    difference = max_length - current_length
+    return(paste0(x, paste(rep(" ", difference), collapse = ''), sep = ''))
+  }, FUN.VALUE = character(1))
+  
+  Rnew = matrix(Rformatted, ncol = ncol(x))
+  rownames(Rnew) = colnames(Rnew) = colnames(x)
+    if (use == 'upper') {
+    Rnew[lower.tri(Rnew, diag = replace_diagonal)] = replacement
+  } else if (use == 'lower') {
+    Rnew[upper.tri(Rnew, diag = replace_diagonal)] = replacement
+  } else if (replace_diagonal) {
+    diag(Rnew) = replacement
+  }
+  return(Rnew)
+}
+```
+
+
+```{r}
+correlation_matrix(data_mat, use = 'lower')
+write.table(correlation_matrix(data_mat, use = 'lower'), file = "corr.csv")
+```
+
+```{r}
+corrplot(cor(corrtable),
+  method = "number",
+  type = "upper"
+)
+```
+
+```{r}
+# создадим функцию для матрицы корреляции
+data_cor= function(data){
+  as.matrix(round(cor(data, use = "pairwise.complete.obs", method = "pearson"), 3))
+}
+corrtable = data.frame(data_cor(data_mat))
+knitr::kable(corrtable) %>% kable_styling() 
+```
+
+```{r}
+# преобразуем матрицу
+upper = corrtable 
+upper[upper.tri(corrtable, diag = TRUE)] = ""
+upper = as.data.frame(upper)
+```
+
+Результаты ЕГЭ графики
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_b, color=university_rus)) + geom_line()  + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Средний балл ЕГЭ бюджетного приема вузов-участников с 2013 г.",
+       x = "",
+       y = "",
+       color = '') + 
+ theme_classic() +
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9)) 
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_b, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов-участников с 2015 г.\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_b, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+ege_p
+
+```{r}
+data %>% filter(university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_p, color=university_rus)) + geom_line()  + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Средний балл ЕГЭ бюджетного приема вузов-участников с 2013 г.",
+       x = "",
+       y = "",
+       color = '') + 
+ theme_classic() +
+  theme(
+    panel.grid.major.x = element_line(color = "gray80", size = 0.2),
+    panel.grid.major.y = element_line(color = "white", size = 0.2),
+    panel.grid.minor = element_blank()
+  )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9)) 
+```
+
+
+```{r}
+data %>% filter(university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_p, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2015), linetype = 'dashed', color = 'slategrey') + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов-участников с 2015 г.\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+```{r}
+data %>% filter(university_rus %in% c("СВФУ", "МАИ", "ПГТУ", "СГУ", "ЮФУ", "МГТУ", "ВГУ", "УГАТУ", "РЭУ Плеханова", "НЭТИ")&!is.na(artperpps))%>%  ggplot(aes(x = year, y = ege_p, color=university_rus)) + geom_line() + geom_vline(aes(xintercept = 2020), linetype = 'dashed', color = 'slategrey') + labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') + 
+  theme_classic() +    theme(     panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+## Тренды
+
+Articles
+
+```{r}
+data$group = as.factor(ifelse(data$university_rus %in% c("ДВФУ", "НИУ ВШЭ", "ИТМО", "ЛЭТИ", "КФУ", "НИТУ \"МИСИС\"", "НИЯУ МИФИ", "МФТИ", "НГУ", "ННГУ", "СГАУ", "СПбПУ", "ТГУ", "ТПУ", "УрФУ"), '2013', ifelse(data$university_rus %in% c("БФУ", "МГМУ","СФУ", "ЮУрГУ", "РУДН", "ТюмГУ"), '2015', 'control')))
+
+data %>% filter(!is.na(articles))%>% group_by(year, group)%>%summarise(mean= mean(articles)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+Q1
+
+```{r}
+data %>% filter(!is.na(q1))%>% group_by(year, group)%>%summarise(mean= mean(q1)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 13)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+artperpps
+
+```{r}
+data %>% filter(!is.na(artperpps))%>% group_by(year, group)%>%summarise(mean= mean(artperpps)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+q1perpps
+
+```{r}
+data %>% filter(!is.na(q1perpps))%>% group_by(year, group)%>%summarise(mean= mean(q1perpps)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+pps
+
+```{r}
+data %>% filter(!is.na(pps))%>% group_by(year, group)%>%summarise(mean= mean(pps)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+ege_b
+
+```{r}
+data %>% filter(!is.na(ege_b))%>% group_by(year, group)%>%summarise(mean= mean(ege_b)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+ege_p
+
+```{r}
+data %>% filter(!is.na(ege_p))%>% group_by(year, group)%>%summarise(mean= mean(ege_p)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+abit_p
+
+```{r}
+data %>% filter(!is.na(abit_b))%>% group_by(year, group)%>%summarise(mean= mean(abit_b)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+abit_p
+
+```{r}
+data %>% filter(!is.na(abit_p))%>% group_by(year, group)%>%summarise(mean= mean(abit_p)) %>%  ggplot(aes(x = year, y = mean, color=group)) + geom_line() + geom_smooth(aes(group=group), method = 'lm', se =FALSE, size = 0.5, linetype = 'dashed')+ labs(#title = "Количество публикаций (типа: article) вузов контрольной группы\nна одного сотрудника ППС",
+       x = "",
+       y = "",
+       color = '') +   scale_color_brewer(palette = "Dark2", labels=c("Вузы-участники с 2013", "Вузы-участники с 2015", "Вузы контрольной группы")) +
+  theme_classic() + theme(panel.grid.major.x = element_line(color = "gray80", size = 0.2),     panel.grid.major.y = element_line(color = "white", size = 0.2),     panel.grid.minor = element_blank()   )+ 
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 8)) + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 9))
+```
+
+## Перейдем к регрессиям
+
+Зависимые переменные:
+1. логарифм articles
+2. логарифм q1
+3. artperpps
+4. artperq1
+  5. ege_b
+  6. ege_p
+
+Регрессоры:
+1. PPS
+2. 2013/2015/control
+3. Year
+  -> В случае с ЕГЭ: abit_b, abit_p, PPS, Year, 2013/2015/control
+  
+https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faqhow-do-i-interpret-a-regression-model-when-some-variables-are-log-transformed/
+
+```{r}
+# функции для подсчитывания метрик качества моделей
+RMSE = function(error){sqrt(mean(error^2))}
+MAE = function(error){mean(abs(error))}
+RSS = function(model){sum(resid(model)^2)}
+
+# QQ-plots
+ggQQ = function(lm){
+  d = data.frame(std.resid = rstandard(lm))
+  y = quantile(d$std.resid[!is.na(d$std.resid)], c(0.25, 0.75))
+  x = qnorm(c(0.25, 0.75))
+  slope = diff(y)/diff(x)
+  int = y[1L] - slope * x[1L]
+  p = ggplot(data = d, aes(sample = std.resid)) +
+    stat_qq(shape = 1, size = 3) +         
+    labs(title = "Normal Q-Q",            
+         x = "Theoretical Quantiles",      
+         y = "Standardized Residuals") +   
+    geom_abline(slope = slope, intercept = int, linetype = "dashed",
+                size = 1, col = "firebrick1") + theme_classic() 
+  return(p)
+}
+```
+
+# Добавление новой переменной participation
+
+```{r}
+data$participation = as.factor(ifelse(data$`2013` == 1 & data$year %in% c(2013:2021), 1, ifelse(data$`2015` == 1 & data$year %in% c(2015:2021), 1, 0)))
+
+# ПРОВЕРЯЕМ: data %>% select(year, university_rus, `2013`, `2015`, control, participation)
+
+panel_data2 = pdata.frame(data, index = c('university_rus', "year"), row.names = TRUE)
+```
+
+# Logarithm Articles
+
+### Модель №1. Pooled OLS
+
+Уравнение: log(articles) ~ participation + pps
+
+```{r}
+pooled = plm(log(articles) ~ participation + pps, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled)
+# Adj. R-Squared: 0.54048 - не зависим от числа регрессоров и используем его: на 54% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 164.487 on 2 and 276 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+vif(pooled) # мера вздутия дисперсии: <10 - тогда нет мультиколлениарности, <5 вообще супер
+check_autocorrelation(pooled) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# кластерные робастные ошибки состоятельные при гетероскедастичности
+coeftest(pooled, vcov=vcovHC(pooled, type="HC0", cluster="group")) #коэфы значимы супер круто на 1%
+
+AIC(pooled) # 604.7567
+BIC(pooled) # 619.2816
+RSS(pooled) # 138.6909
+RMSE(pooled$residuals) # 0.7050532
+MAE(pooled$residuals) # 0.5844605
+```
+
+```{r}
+Anova(pooled, type=c("III")) # все переменные значимы
+
+# график распределения остатков
+data.frame(residuals(pooled)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled),
+                         Residuals = residuals(pooled)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: log(articles) ~ participation + pps + year
+
+```{r}
+pooled2 = plm(log(articles) ~ participation + pps + year, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2)
+# Adj. R-Squared: 0.59702 - не зависим от числа регрессоров и используем его: на 59,7% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 42.1863 on 10 and 268 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+vif(pooled2) #мера вздутия дисперсии: <10 - тогда нет мультиколлениарности, <5 вообще супер
+check_autocorrelation(pooled2) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled2, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(pooled2, vcov=vcovHC(pooled2, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+# тест на линейные ограничения состоятельный при гетероскедастичности
+waldtest(pooled, pooled2, vcov = vcovHC(pooled2)) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+
+# likelihood ratio test
+lrtest(pooled, pooled2)  
+
+AIC(pooled2) # 575.9153
+BIC(pooled2) # 619.4899
+RSS(pooled2) # 118.0993
+RMSE(pooled2$residuals) # 0.6506113
+MAE(pooled2$residuals) # 0.5430867
+```
+
+```{r}
+Anova(pooled2, type=c("III")) # все переменные значимы
+
+# график распределения остатков
+data.frame(residuals(pooled2)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2),
+                         Residuals = residuals(pooled2)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. fixed Time Effects
+
+Уравнение: log(articles) ~ participation + pps
+
+```{r}
+fixed = plm(log(articles) ~ participation + log(pps), data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time') 
+summary(fixed)
+# Adj. R-Squared: 0.54787 - не зависим от числа регрессоров и используем его: на 55% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 173.435 on 2 and 268 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(fixed) #автокорреляция остатков
+
+bptest(fixed, studentize = TRUE)
+
+coeftest(fixed, vcov=vcovHC(fixed, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+AIC(fixed) # 552.2669
+BIC(fixed) # 563.1606
+RSS(fixed) # 115.7324
+RMSE(fixed$residuals) # 0.6440586
+MAE(fixed$residuals) # 0.538053
+
+panel_data2$residuals_fixed = ifelse(!is.na(log(panel_data2$articles)) & rownames(data.frame(fixed$residuals)) %in% rownames(panel_data2), fixed$residuals, NA)
+cor(panel_data2$residuals_fixed, log(panel_data2$articles), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed, as.numeric(cov_data$participation), method = 'pearson') # менять регрессоры
+plm::phtest(log(articles) ~ participation + log(pps), data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed),
+                         Residuals = residuals(fixed)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed = data.frame(tidy(fixef(fixed, effect = 'time')))
+
+fixed_year_graph = data_fixed %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_graph
+ggsave('fixed_year_graph.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: log(articles) ~ participation + pps + year
+
+```{r}
+random = plm(log(articles) ~ participation + pps + year, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random)
+# Adj. R-Squared: 0.61214 - не зависим от числа регрессоров и используем его: на 61% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 448.747 on 10 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random) #автокорреляция остатков
+
+coeftest(random, vcov=vcovHC(random, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+AIC(random) # 157.8246
+BIC(random) # 201.3991
+RSS(random) # 26.3902
+RMSE(random$residuals) # 0.3075525
+MAE(random$residuals) # 0.2279976
+
+phtest(fixed, random) # 0.00000000000000022
+```
+
+В латех
+
+```{r}
+stargazer(coeftest(pooled, vcov=vcovHC(pooled, type="HC0",cluster="group")), coeftest(pooled2, vcov=vcovHC(pooled2, type="HC0",cluster="group")), coeftest(fixed, vcov=vcovHC(fixed, type="HC0",cluster="group")), coeftest(random, vcov=vcovHC(random, type="HC0",cluster="group")),
+          title="Результаты регрессий для контрольной группы",
+          dep.var.labels='Логарифм количества статей', 
+          align=TRUE, no.space=TRUE, 
+          column.sep.width = "-10pt", 
+          df = FALSE,
+          column.labels=c("Pooled OLS", "Pooled OLS", "fixed-Effects", "random-Effects"))
+```
+
+
+
+
+
+
+
+
+# Логарифм Q1
+
+### Модель №1. Pooled OLS
+
+Уравнение: log(q1+1) ~ participation + pps
+
+```{r}
+pooled_Q1 = plm(log(q1+1) ~ participation + pps, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled_Q1)
+# Adj. R-Squared: 0.48603 - не зависим от числа регрессоров и используем его: на 49% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 132.442 on 2 and 276 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+vif(pooled_Q1) # мера вздутия дисперсии: <10 - тогда нет мультиколлениарности, <5 вообще супер
+check_autocorrelation(pooled_Q1) #автокорреляция остатков
+
+coeftest(pooled_Q1, vcov=vcovHC(pooled_Q1, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 5%
+#Intercept - participation0
+
+AIC(pooled_Q1) # 806.4345
+BIC(pooled_Q1) # 820.9594
+RSS(pooled_Q1) # 285.7471
+RMSE(pooled_Q1$residuals) # 1.012019
+MAE(pooled_Q1$residuals) # 0.8326141
+```
+
+```{r}
+Anova(pooled_Q1, type=c("III")) # все переменные значимы
+
+# график распределения остатков
+data.frame(residuals(pooled_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled_Q1),
+                         Residuals = residuals(pooled_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: log(q1+1) ~ participation + pps + year
+
+```{r}
+pooled2_Q1 = plm(log(q1+1) ~ participation + pps + year, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2_Q1)
+# Adj. R-Squared: 0.57879 - не зависим от числа регрессоров и используем его: на 58% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 39.201 on 10 and 268 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+vif(pooled2_Q1) #мера вздутия дисперсии: <10 - тогда нет мультиколлениарности, <5 вообще супер
+check_autocorrelation(pooled2_Q1) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled2_Q1, studentize = TRUE)
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(pooled2_Q1, vcov=vcovHC(pooled2_Q1, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 5%
+# Intercept - participation0
+
+# тест на линейные ограничения
+waldtest(pooled_Q1, pooled2_Q1)
+# likelihood ratio test
+lrtest(pooled_Q1, pooled2_Q1)  
+
+AIC(pooled2_Q1) # 758.6929
+BIC(pooled2_Q1) # 802.2674
+RSS(pooled2_Q1) # 227.3845
+RMSE(pooled2_Q1$residuals) # 0.9027726
+MAE(pooled2_Q1$residuals) # 0.7370248
+```
+
+```{r}
+Anova(pooled2_Q1, type=c("III")) # все переменные значимы
+
+# график распределения остатков
+data.frame(residuals(pooled2_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2_Q1),
+                         Residuals = residuals(pooled2_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. Fixed Time Effects
+
+Уравнение: log(q1+1) ~ participation + pps
+
+```{r}
+fixed_Q1_new = plm(log(q1+1) ~ participation + log(pps), data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time') 
+summary(fixed_Q1_new)
+# Adj. R-Squared: 0.51421 - не зависим от числа регрессоров и используем его: на 51% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 152.13 on 2 and 268 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+bptest(fixed_Q1_new, studentize = TRUE)
+check_autocorrelation(fixed_Q1_new) #автокорреляция остатков
+
+coeftest(fixed_Q1_new, vcov=vcovHC(fixed_Q1_new, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+AIC(fixed_Q1_new) # 728.6079
+BIC(fixed_Q1_new) # 728.6079
+RSS(fixed_Q1_new) # 217.7456
+RMSE(fixed_Q1_new$residuals) # 0.8834308
+MAE(fixed_Q1_new$residuals) # 0.7227902
+
+panel_data2$residuals_fixed_Q1_new = ifelse(!is.na(log(panel_data2$q1+1)) & rownames(data.frame(fixed_Q1_new$residuals)) %in% rownames(panel_data2), fixed_Q1_new$residuals, NA)
+cor(panel_data2$residuals_fixed_Q1_new, log(panel_data2$q1+1), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed_Q1_new, as.numeric(cov_data$participation), method = 'pearson') # менять регрессоры
+plm::phtest(log(q1 + 1) ~ participation + log(pps), data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_Q1_new)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_Q1_new.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_Q1_new),
+                         Residuals = residuals(fixed_Q1_new)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+## График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed_Q1_new = data.frame(tidy(fixef(fixed_Q1_new, effect = 'time')))
+
+fixed_year_graphQ1 = data_fixed_Q1_new %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_graphQ1
+ggsave('fixed_year_graphQ1.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: log(q1+1) ~ participation + pps + year
+
+```{r}
+random_Q1_new = plm(log(q1+1) ~ participation + pps + year, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random_Q1_new)
+# Adj. R-Squared: 0.64635 - не зависим от числа регрессоров и используем его: на 65% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 518.089 on 10 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random_Q1_new) #автокорреляция остатков
+
+coeftest(random_Q1_new, vcov=vcovHC(random_Q1_new, type="HC0", cluster="group"))
+# коэф pps не значим
+
+AIC(random_Q1_new) # 354.4511
+BIC(random_Q1_new) # 398.0256
+RSS(random_Q1_new) # 53.39661
+RMSE(random_Q1_new$residuals) # 0.4374765
+MAE(random_Q1_new$residuals) # 0.3272828
+
+phtest(fixed_Q1_new, random_Q1_new) # 0.00000000000001631
+```
+
+
+
+
+# Artperpps
+
+### Модель №1. Pooled OLS
+
+Уравнение: log(artperpps) ~ participation + pps
+
+```{r}
+pooled_artper = plm(log(artperpps) ~ participation, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled_artper)
+# Adj. R-Squared: 0.46615 - не зависим от числа регрессоров и используем его: на 47% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 243.742 on 1 and 277 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+check_autocorrelation(pooled_artper) #автокорреляция остатков
+
+coeftest(pooled_artper, vcov=vcovHC(pooled_artper, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 1%
+#Intercept - participation0
+
+AIC(pooled_artper) # 599.0422
+BIC(pooled_artper) # 609.9358
+RSS(pooled_artper) # 136.8566
+RMSE(pooled_artper$residuals) # 0.7003753
+MAE(pooled_artper$residuals) # 0.57229
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled_artper)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled_artper.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled_artper),
+                         Residuals = residuals(pooled_artper)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: log(artperpps) ~ participation + year
+
+```{r}
+pooled2_artper = plm(log(artperpps) ~ participation + year, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2_artper)
+# Adj. R-Squared: 0.53034 - не зависим от числа регрессоров и используем его: на 53% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 35.8793 on 9 and 269 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(pooled2_artper) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(pooled2_artper, vcov=vcovHC(pooled2_artper, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+# Intercept - participation0
+
+# тест на линейные ограничения состоятельный при гетероскедастичности
+waldtest(pooled_artper, pooled2_artper, vcov = vcovHC(pooled2_artper)) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+# likelihood ratio test
+lrtest(pooled_artper, pooled2_artper)  
+
+AIC(pooled2_artper) # 571.124
+BIC(pooled2_artper) # 611.0673
+RSS(pooled2_artper) # 116.9236
+RMSE(pooled2_artper$residuals) # 0.6473648
+MAE(pooled2_artper$residuals) # 0.5362159
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled2_artper)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2_artper.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2_artper),
+                         Residuals = residuals(pooled2_artper)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. Fixed Time Effects
+
+Уравнение: log(artperpps) ~ participation + pps
+
+```{r}
+fixed_artper = plm(log(artperpps) ~ participation, data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time') 
+summary(fixed_artper)
+# Adj. R-Squared: 0.4565 - не зависим от числа регрессоров и используем его: на 46% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 242.497 on 1 and 269 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(fixed_artper) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(fixed_artper, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(fixed_artper, vcov=vcovHC(fixed_artper, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+AIC(fixed_artper) # 553.124
+BIC(fixed_artper) # 560.3864
+RSS(fixed_artper) # 116.9236
+RMSE(fixed_artper$residuals) # 0.6473648
+MAE(fixed_artper$residuals) # 0.5362159
+
+panel_data2$residuals_fixed_artper = ifelse(!is.na(log(panel_data2$artperpps)) & rownames(data.frame(fixed_artper$residuals)) %in% rownames(panel_data2), fixed_artper$residuals, NA)
+cor(panel_data2$residuals_fixed_artper, log(panel_data2$artperpps), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed_artper, as.numeric(cov_data$participation), method = 'pearson') # менять регрессоры
+plm::phtest(log(artperpps) ~ participation, data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_artper)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_artper.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_artper),
+                         Residuals = residuals(fixed_artper)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+## График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed_artper = data.frame(tidy(fixef(fixed_artper, effect = 'time')))
+
+fixed_year_artper = data_fixed_artper %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_artper
+ggsave('fixed_year_artper.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: log(artperpps) ~ participation + year
+
+```{r}
+random_artper = plm(log(artperpps) ~ participation + year, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random_artper)
+# Adj. R-Squared: 0.58774 - не зависим от числа регрессоров и используем его: на 59% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 405.338 on 9 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random_artper)
+
+#автокорреляция остатков
+# тесты на гетероскедастичность
+bptest(random_artper, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(random_artper, vcov=vcovHC(random_artper, type="HC0", cluster="group"))
+# всё значимо
+
+AIC(random_artper) # 160.3869
+BIC(random_artper) # 200.3302
+RSS(random_artper) # 26.82529
+RMSE(random_artper$residuals) # 0.3100774
+MAE(random_artper$residuals) # 0.2299673
+
+phtest(fixed_artper, random_artper) # 0.000000000000003806
+```
+
+# Q1perpps
+
+### Модель №1. Pooled OLS
+
+Уравнение: log(q1perpps+1) ~ participation + pps
+
+```{r}
+pooled_q1per = plm(log(q1perpps+1) ~ participation, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled_q1per)
+# Adj. R-Squared: 0.29682 - не зависим от числа регрессоров и используем его: на 30% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 118.346 on 1 and 277 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+check_autocorrelation(pooled_q1per) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled_q1per, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(pooled_q1per, vcov=vcovHC(pooled_q1per, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+# Intercept - participation0
+
+AIC(pooled_q1per) # -506.1577
+BIC(pooled_q1per) # -495.264
+RSS(pooled_q1per) # 2.605551
+RMSE(pooled_q1per$residuals) # 0.09663794
+MAE(pooled_q1per$residuals) # 0.07054489
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled_q1per)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled_q1per.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled_q1per),
+                         Residuals = residuals(pooled_q1per)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: log(q1perpps) ~ participation + year
+
+```{r}
+pooled2_q1per = plm(log(q1perpps+1) ~ participation + year, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2_q1per)
+# Adj. R-Squared: 0.3581 - не зависим от числа регрессоров и используем его: на 46% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 18.2321 on 9 and 269 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(pooled2_q1per) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled2_q1per, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(pooled2_q1per, vcov=vcovHC(pooled2_q1per, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+# Intercept - participation0
+
+# тест на линейные ограничения состоятельный при гетероскедастичности
+waldtest(pooled_q1per, pooled2_q1per, vcov = vcovHC(pooled2_q1per)) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+# likelihood ratio test
+lrtest(pooled_q1per, pooled2_q1per)  
+
+AIC(pooled2_q1per) # -523.7739
+BIC(pooled2_q1per) # -483.8306
+RSS(pooled2_q1per) # 2.309788
+RMSE(pooled2_q1per$residuals) # 0.09098797
+MAE(pooled2_q1per$residuals) # 0.06913681
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled2_q1per)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2_q1per.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2_q1per),
+                         Residuals = residuals(pooled2_q1per)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. Fixed Time Effects
+
+Уравнение: log(q1perpps) ~ participation
+
+```{r}
+fixed_q1per = plm(log(q1perpps+1) ~ participation, data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time') 
+summary(fixed_q1per)
+# Adj. R-Squared: 0.2695 - не зависим от числа регрессоров и используем его: на 30% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 111.562 on 1 and 269 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(fixed_q1per) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(fixed_q1per, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(fixed_q1per, vcov=vcovHC(fixed_q1per, type="HC0", cluster="group"))
+# коэфы значимы супер круто на 1%
+
+AIC(fixed_q1per) # -541.7739
+BIC(fixed_q1per) # -534.5115
+RSS(fixed_q1per) # 2.309788
+RMSE(fixed_q1per$residuals) # 0.09098797
+MAE(fixed_q1per$residuals) # 0.06913681
+
+panel_data2$residuals_fixed_q1per = ifelse(!is.na(log(panel_data2$q1perpps+1)) & rownames(data.frame(fixed_q1per$residuals)) %in% rownames(panel_data2), fixed_q1per$residuals, NA)
+cor(panel_data2$residuals_fixed_q1per, log(panel_data2$q1perpps+1), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed_q1per, as.numeric(cov_data$participation), method = 'pearson') # менять регрессоры
+plm::phtest(q1perpps ~ participation, data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_q1per)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_q1per.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_q1per),
+                         Residuals = residuals(fixed_q1per)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+## График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed_q1per = data.frame(tidy(fixef(fixed_q1per, effect = 'time')))
+
+fixed_year_q1per = data_fixed_q1per %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_q1per
+ggsave('fixed_year_q1per.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: log(q1perpps) ~ participation + year
+
+```{r}
+random_q1per = plm(log(q1perpps+1) ~ participation + year, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random_q1per)
+# Adj. R-Squared: 0.38304 - не зависим от числа регрессоров и используем его: на 53% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 181.598 on 9 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random_q1per) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(random_q1per, studentize = TRUE)
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(random_q1per, vcov=vcovHC(random_q1per, type="HC0", cluster="group"))
+# всё значимо
+
+AIC(random_q1per) # -867.7559
+BIC(random_q1per) # -827.8126
+RSS(random_q1per) # 0.6731719
+RMSE(random_q1per$residuals) # 0.04912029
+MAE(random_q1per$residuals) # 0.03677163
+
+phtest(fixed_q1per, random_q1per) # 0.00000000000000022
+```
+
+
+# ЕГЭ
+
+```{r}
+shapiro.test(panel_data2$ege_p)
+shapiro.test(log(panel_data2$ege_b))
+```
+
+## ege_p
+
+### Модель №1. Pooled OLS
+
+Уравнение: ege_p ~ participation + abit_p
+
+```{r}
+pooled_egep = plm(ege_p ~ participation + abit_p, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled_egep)
+# Adj. R-Squared: 0.12119 - не зависим от числа регрессоров и используем его: на 12% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 20.1688 on 2 and 276 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+check_autocorrelation(pooled_egep) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled_egep, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(pooled_egep, vcov=vcovHC(pooled_egep, type="HC0", cluster="group")) 
+# abit_p не значим
+# Intercept - participation0
+
+AIC(pooled_egep) # 1998.507
+BIC(pooled_egep) # 2013.032
+RSS(pooled_egep) # 20491.55
+RMSE(pooled_egep$residuals) # 8.570088
+MAE(pooled_egep$residuals) # 6.568889
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled_egep)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled_egep.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled_egep),
+                         Residuals = residuals(pooled_egep)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: ege_p ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+pooled2_egep = plm(ege_p ~ participation + abit_p + abit_b + year + pps, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2_egep)
+# Adj. R-Squared: 0.48769 - не зависим от числа регрессоров и используем его: на 49% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 23.0537 on 12 and 266 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(pooled2_egep) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled2_egep, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+bptest(pooled2_egep, studentize = FALSE) # классика Бройша Пагана
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(pooled2_egep, vcov=vcovHC(pooled2_egep, type="HC0", cluster="group")) 
+# abit_p не значим
+# Intercept - participation0
+
+# тест на линейные ограничения
+# тест на линейные ограничения состоятельный при гетероскедастичности
+waldtest(pooled_egep, pooled2_egep, vcov = vcovHC(pooled2_egep)) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+# likelihood ratio test
+lrtest(pooled_egep, pooled2_egep)  
+# тест на линейные ограничения состоятельный при гетероскедастичности
+waldtest(pooled_egep, pooled2_egep, vcov = vcovHC(pooled2_egep)) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+
+AIC(pooled2_egep) # 1857.649
+BIC(pooled2_egep) # 1908.486
+RSS(pooled2_egep) # 11512.84
+RMSE(pooled2_egep$residuals) # 6.423757
+MAE(pooled2_egep$residuals) # 4.840561
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled2_egep)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2_egep.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2_egep),
+                         Residuals = residuals(pooled2_egep)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. Fixed Time Effects
+
+Уравнение: ege_p ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+fixed_egep = plm(ege_p ~ participation + abit_p + abit_b + pps, data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time') 
+summary(fixed_egep)
+# Adj. R-Squared: 0.18308 - не зависим от числа регрессоров и используем его: на 18% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 18.5756 on 4 and 266 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(fixed_egep) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(fixed_egep, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(fixed_egep, vcov=vcovHC(fixed_egep, type="HC0", cluster="group"))
+# abit_p не значим
+
+AIC(fixed_egep) # 1839.649
+BIC(fixed_egep) # 1857.805
+RSS(fixed_egep) # 11512.84
+RMSE(fixed_egep$residuals) # 6.423757
+MAE(fixed_egep$residuals) # 4.840561
+
+panel_data2$residuals_fixed_egep = ifelse(!is.na(panel_data2$ege_p) & rownames(data.frame(fixed_egep$residuals)) %in% rownames(panel_data2), fixed_egep$residuals, NA)
+cor(panel_data2$residuals_fixed_egep, panel_data2$ege_p, use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed_egep, as.numeric(cov_data$pps), method = 'pearson') # менять регрессоры 
+plm::phtest(ege_p ~ participation + abit_p + abit_b + pps, data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_egep)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_egep.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_egep),
+                         Residuals = residuals(fixed_egep)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed_egep = data.frame(tidy(fixef(fixed_egep, effect = 'time')))
+
+fixed_year_egep = data_fixed_egep %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_egep
+ggsave('fixed_year_egep.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: ege_p ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+random_egep = plm(ege_p ~ participation + abit_p + abit_b + year + pps, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random_egep)
+# Adj. R-Squared: 0.84846 - не зависим от числа регрессоров и используем его: на 85% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 1568.48 on 12 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random_egep) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(random_egep, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(random_egep, vcov=vcovHC(random_egep, type="HC0", cluster="group"))
+# abit_p, abit_b, pps, participation1 не значимы
+
+AIC(random_egep) # 1286.776
+BIC(random_egep) # 1337.613
+RSS(random_egep) # 1487.835
+RMSE(random_egep$residuals) # 2.309273
+MAE(random_egep$residuals) # 1.768156
+
+phtest(fixed_egep, random_egep) # 0.00000000000000022
+```
+
+## ege_b
+
+```{r}
+shapiro.test(panel_data2$ege_b)
+shapiro.test(log(panel_data2$ege_b))
+hist(panel_data2$ege_b)
+```
+
+### Модель №1. Pooled OLS
+
+Уравнение: ege_b ~ participation + abit_p
+
+```{r}
+pooled_egeb = plm(ege_b ~ participation + abit_b, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled_egeb)
+# Adj. R-Squared: 0.22762 - не зависим от числа регрессоров и используем его: на 23% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 41.963 on 2 and 276 DF, p-value: < 2.22e-16
+# если p-value: > 0,05 - модель не значима
+
+check_autocorrelation(pooled_egeb) # автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled_egeb, studentize = TRUE) # 0.6393 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+# Intercept - participation0
+
+AIC(pooled_egeb) # 1949.352
+BIC(pooled_egeb) # 1963.876
+RSS(pooled_egeb) # 17181.42
+RMSE(pooled_egeb$residuals) # 7.84743
+MAE(pooled_egeb$residuals) # 6.419536
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled_egeb)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled_egeb.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled_egeb),
+                         Residuals = residuals(pooled_egeb)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+Уравнение: ege_b ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+pooled2_egeb = plm(ege_b ~ participation + abit_p + abit_b + year + pps, data = panel_data2, model = "pooling", index = c('university_rus', "year")) 
+summary(pooled2_egeb)
+# Adj. R-Squared: 0.39611 - не зависим от числа регрессоров и используем его: на 40% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 16.196 on 12 and 266 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(pooled2_egeb) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(pooled2_egeb, studentize = TRUE) # 0.655
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+# тест на линейные ограничения
+linearHypothesis(pooled2_egeb, c("abit_p", "abit_b", 'pps', "year2014", "year2015", 'year2016', 'year2017', 'year2018', 'year2019', 'year2020', 'year2021'), vcov = vcovHC(pooled2_egeb, type="HC0",cluster="group")) # отвергаем нулевую гипотезу -> коэффициенты при переменных года не равны нулю -> выбираем длинную модель регрессии
+# likelihood ratio test
+lrtest(pooled_egeb, pooled2_egeb)  
+
+AIC(pooled2_egeb) # 1890.395
+BIC(pooled2_egeb) # 1941.232
+RSS(pooled2_egeb) # 12946.58
+RMSE(pooled2_egeb$residuals) # 6.812012
+MAE(pooled2_egeb$residuals) # 5.559234
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(pooled2_egeb)) %>% ggplot() + geom_histogram(aes(x = residuals.pooled2_egeb.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(pooled2_egeb),
+                         Residuals = residuals(pooled2_egeb)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### Модель №2. Fixed Time Effects
+
+Уравнение: ege_b ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+fixed_egeb = plm(ege_b ~ participation + abit_p + abit_b + pps, data = panel_data2, model = "within", index = c('university_rus', "year"), effect = 'time')
+summary(fixed_egeb)
+# Adj. R-Squared: 0.32726 - не зависим от числа регрессоров и используем его: на 33% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# F-statistic: 36.8082 on 4 and 266 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(fixed_egeb) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(fixed_egeb, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+# робастные ошибки состоятельные при гетероскедастичности
+coeftest(fixed_egeb, vcov=vcovHC(fixed_egeb, type="HC0", cluster="group"))
+# abit_p не значим
+
+AIC(fixed_egeb) # 1872.395
+BIC(fixed_egeb) # 1890.551
+RSS(fixed_egeb) # 12946.58
+RMSE(fixed_egeb$residuals) # 6.812012
+MAE(fixed_egeb$residuals) # 5.559234
+
+panel_data2$residuals_fixed_egeb = ifelse(!is.na(panel_data2$ege_b) & rownames(data.frame(fixed_egeb$residuals)) %in% rownames(panel_data2), fixed_egeb$residuals, NA)
+cor(panel_data2$residuals_fixed_egeb, panel_data2$ege_b, use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_data2)
+cov(cov_data$residuals_fixed_egeb, as.numeric(cov_data$participation), method = 'pearson') # менять регрессоры 
+plm::phtest(ege_b ~ participation + abit_p + abit_b + pps, data = panel_data2, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_egeb)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_egeb.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_egeb),
+                         Residuals = residuals(fixed_egeb)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+### График фиксированных временных эффектов
+
+```{r message=FALSE, warning=FALSE}
+data_fixed_egeb = data.frame(tidy(fixef(fixed_egeb, effect = 'time')))
+
+fixed_year_egeb = data_fixed_egeb %>% ggplot() +
+  geom_bar(aes(x = as.factor(names), y = x), stat = 'identity', fill = "lightsteelblue", color = "#000099") +
+  labs(x = '',
+       y = 'Фиксированные временные эффекты') +
+  theme_classic(base_size = 14) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 15))
+fixed_year_egeb
+ggsave('fixed_year_egeb.png', width = 16, height = 10)
+```
+
+### Модель №3. Random Effects
+
+Уравнение: ege_b ~ participation + abit_p + abit_b + year + pps
+
+```{r}
+random_egeb = plm(ege_b ~ participation + abit_p + abit_b + year + pps, data = panel_data2, model = 'random', random.method = "amemiya") 
+summary(random_egeb)
+# Adj. R-Squared: 0.74587 - не зависим от числа регрессоров и используем его: на 75% об. переменные объясняют зависимую - это хороший результат
+# ≥20% - хорошо норм
+
+# Chisq: 827.923 on 12 DF, p-value: < 2.22e-16
+# если  p-value: >0,05 - модель не значима
+check_autocorrelation(random_egeb) #автокорреляция остатков
+
+# тесты на гетероскедастичность
+bptest(random_egeb, studentize = TRUE) # 0.655 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+AIC(random_egeb) # 1091.6
+BIC(random_egeb) # 1142.437
+RSS(random_egeb) # 739.1642
+RMSE(random_egeb$residuals) # 1.627678
+MAE(random_egeb$residuals) # 1.280597
+
+phtest(fixed_egeb, random_egeb) # 0.00000000000000022
+```
+
+# Модель Diff-in-Diff
+
+## Logarithm articles, 2013 group
+
+```{r}
+difdata2013 = data %>% filter(`2015` != 1) %>% mutate(time = ifelse(year %in% (2008:2012), 0, 1))
+
+panel_dif2013 = pdata.frame(difdata2013, index = c('university_rus', "year"), row.names = TRUE)
+```
+
+### Модель №1. OLS (2013 group)
+
+Уравнение: log(articles) ~ time*`2013`
+
+```{r}
+diffndiff = lm(log(articles) ~ time*`2013`, data = difdata2013) 
+summary(diffndiff)
+# Adj. R-Squared: 0.5534 - не зависим от числа регрессоров и используем его: на 55% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 145.2 on 1 and 346 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(diffndiff, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(diffndiff, vcov=vcovHC(diffndiff, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 1%
+
+AIC(diffndiff) # 836.9027
+BIC(diffndiff) # 856.1924
+RSS(diffndiff) # 217.5949
+RMSE(diffndiff$residuals) # 0.7884794
+MAE(diffndiff$residuals) # 0.6323225
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(diffndiff)) %>% ggplot() + geom_histogram(aes(x = residuals.diffndiff.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(diffndiff),
+                         Residuals = residuals(diffndiff)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+### Модель №2. Fixed-Effects (2013 group)
+
+Уравнение: log(articles) ~ time*X2013
+
+```{r}
+fixed_diffndiff = plm(log(articles) ~ time*X2013, data = panel_dif2013, model = 'within') 
+summary(fixed_diffndiff)
+# Adj. R-Squared: 0.61178 - не зависим от числа регрессоров и используем его: на 61% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 287.984 on 1 and 323 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(fixed_diffndiff, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(fixed_diffndiff, vcov=vcovHC(fixed_diffndiff, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 1%
+
+AIC(fixed_diffndiff) # 419.0407
+BIC(fixed_diffndiff) # 430.6145
+RSS(fixed_diffndiff) # 66.69783
+RMSE(fixed_diffndiff$residuals) # 0.4365378
+MAE(fixed_diffndiff$residuals) # 0.3220448
+
+panel_dif2013$residuals_fixed_diffndiff = ifelse(!is.na(log(panel_dif2013$articles)) & rownames(data.frame(fixed_diffndiff$residuals)) %in% rownames(panel_dif2013), fixed_diffndiff$residuals, NA)
+cor(panel_dif2013$residuals_fixed_diffndiff, log(panel_dif2013$articles), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_dif2013)
+cov(cov_data$residuals_fixed_diffndiff, as.numeric(cov_data$time), method = 'pearson') # менять регрессоры 
+plm::phtest(log(articles) ~ time*X2013, data = panel_dif2013, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_diffndiff)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_diffndiff.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_diffndiff),
+                         Residuals = residuals(fixed_diffndiff)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+
+## Logarithm articles, 2015 group
+
+```{r}
+difdata2015 = data %>% filter(`2013` == 0) %>% mutate(time = ifelse(year %in% (2008:2012), 0, 1))
+
+panel_dif2015 = pdata.frame(difdata2015, index = c('university_rus', "year"), row.names = TRUE)
+```
+
+### Модель №1. OLS (2015)
+
+Уравнение: log(articles) ~ time*`2015`
+
+```{r}
+diffndiff2015 = lm(log(articles) ~ time*`2015`, data = difdata2015) 
+summary(diffndiff2015)
+# Adj. R-Squared: 29.13 - не зависим от числа регрессоров и используем его: на 26% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 29.13 on 1 and 220 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(diffndiff2015, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(diffndiff2015, vcov=vcovHC(diffndiff2015, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 1%
+
+AIC(diffndiff2015) # 603.0463
+BIC(diffndiff2015) # 620.1045
+RSS(diffndiff2015) # 185.1742
+RMSE(diffndiff2015$residuals) # 0.9092143
+MAE(diffndiff2015$residuals) # 0.7376912
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(diffndiff2015)) %>% ggplot() + geom_histogram(aes(x = residuals.diffndiff2015.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(diffndiff2015),
+                         Residuals = residuals(diffndiff2015)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+### Модель №2. Fixed-Effects (2015)
+
+Уравнение: log(articles) ~ time*X2015
+
+```{r}
+fixed_diffndiff2015 = plm(log(articles) ~ time*X2015, data = panel_dif2015, model = 'within') 
+summary(fixed_diffndiff2015)
+# Adj. R-Squared: 0.47966 - не зависим от числа регрессоров и используем его: на 48% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 111.283 on 1 and 206 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(fixed_diffndiff2015, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value < 0.05 -> отвергаем нулевую гипотезу и принимаем альтернативную о гетероскедастичности
+
+coeftest(fixed_diffndiff2015, vcov=vcovHC(fixed_diffndiff2015, type="HC0", cluster="group")) 
+#коэфы значимы супер круто на 1%
+
+AIC(fixed_diffndiff2015) # 365.6376
+BIC(fixed_diffndiff2015) # 375.8725
+RSS(fixed_diffndiff2015) # 65.31971
+RMSE(fixed_diffndiff2015$residuals) # 0.5400054
+MAE(fixed_diffndiff2015$residuals) # 0.4054125
+
+panel_dif2015$residuals_fixed_diffndiff2015 = ifelse(!is.na(log(panel_dif2015$articles)) & rownames(data.frame(fixed_diffndiff2015$residuals)) %in% rownames(panel_dif2015), fixed_diffndiff2015$residuals, NA)
+cor(panel_dif2015$residuals_fixed_diffndiff2015, log(panel_dif2015$articles), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_dif2015)
+cov(cov_data$residuals_fixed_diffndiff2015, as.numeric(cov_data$time), method = 'pearson') # менять регрессоры
+plm::phtest(log(articles) ~ time * X2015, data = panel_dif2015, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_diffndiff2015)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_diffndiff2015.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_diffndiff2015),
+                         Residuals = residuals(fixed_diffndiff2015)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+
+## Logarithm Q1, 2013 group
+
+### Модель №1. OLS (2013)
+
+Уравнение: log(Q1) ~ time*`2013`
+
+```{r}
+diffndiff_Q1 = lm(log(q1+1) ~ time*`2013`, data = difdata2013) 
+summary(diffndiff_Q1)
+# Adj. R-Squared: 0.5795 - не зависим от числа регрессоров и используем его: на 58% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 158.9 on 1 and 346 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(diffndiff_Q1, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+AIC(diffndiff_Q1) # 1030.243
+BIC(diffndiff_Q1) # 1049.533
+RSS(diffndiff_Q1) # 378.0538
+RMSE(diffndiff_Q1$residuals) # 1.039304
+MAE(diffndiff_Q1$residuals) # 0.8455223
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(diffndiff_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.diffndiff_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(diffndiff_Q1),
+                         Residuals = residuals(diffndiff_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+### Модель №2. Fixed-Effects (2013)
+
+Уравнение: log(Q1) ~ time*X2013
+
+```{r}
+fixed_diffndiff_Q1 = plm(log(q1+1) ~ time*X2013, data = panel_dif2013, model = 'within') 
+summary(fixed_diffndiff_Q1)
+# Adj. R-Squared: 0.65411 - не зависим от числа регрессоров и используем его: на 65% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 342.998 on 1 and 323 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(fixed_diffndiff_Q1, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+AIC(fixed_diffndiff_Q1) # 653.906
+BIC(fixed_diffndiff_Q1) # 665.4798
+RSS(fixed_diffndiff_Q1) # 130.4795
+RMSE(fixed_diffndiff_Q1$residuals) # 0.6105724
+MAE(fixed_diffndiff_Q1$residuals) # 0.4703105
+
+panel_dif2013$residuals_fixed_diffndiff_Q1 = ifelse(!is.na(log(panel_dif2013$q1+1)) & rownames(data.frame(fixed_diffndiff_Q1$residuals)) %in% rownames(panel_dif2013), fixed_diffndiff_Q1$residuals, NA)
+cor(panel_dif2013$residuals_fixed_diffndiff_Q1, log(panel_dif2013$q1+1), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_dif2013)
+cov(cov_data$residuals_fixed_diffndiff_Q1, as.numeric(cov_data$time), method = 'pearson') # менять регрессоры
+plm::phtest(log(q1 + 1) ~ time * X2013, data = panel_dif2013, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_diffndiff_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_diffndiff_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_diffndiff_Q1),
+                         Residuals = residuals(fixed_diffndiff_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+```{r}
+modelsummary(list(coeftest(diffndiff, vcov=vcovHC(diffndiff, type="HC0", cluster="group")), coeftest(diffndiff2015, vcov=vcovHC(diffndiff2015, type="HC0", cluster="group"))), output = 'table.txt')
+```
+
+
+## Logarithm Q1, 2015 group
+
+### Модель №1. OLS (2015)
+
+Уравнение: log(q1+1) ~ time*`2015`
+
+```{r}
+diffndiff2015_Q1 = lm(log(q1+1) ~ time*`2015`, data = difdata2015) 
+summary(diffndiff2015_Q1)
+# Adj. R-Squared: 0.3778 - не зависим от числа регрессоров и используем его: на 38% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 44.53 on 1 and 220 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(diffndiff2015_Q1, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности 
+
+AIC(diffndiff2015_Q1) # 704.0753
+BIC(diffndiff2015_Q1) # 721.1335
+RSS(diffndiff2015_Q1) # 290.708
+RMSE(diffndiff2015_Q1$residuals) # 1.139212
+MAE(diffndiff2015_Q1$residuals) # 0.9327376
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(diffndiff2015_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.diffndiff2015_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(diffndiff2015_Q1),
+                         Residuals = residuals(diffndiff2015_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+### Модель №2. Fixed-Effects (2015)
+
+Уравнение: log(q1+1) ~ time*X2015
+
+```{r}
+fixed_diffndiff2015_Q1 = plm(log(q1+1) ~ time*X2015, data = panel_dif2015, model = 'within') 
+summary(fixed_diffndiff2015_Q1)
+# Adj. R-Squared: 0.51983 - не зависим от числа регрессоров и используем его: на 52% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 129.21 on 1 and 206 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(fixed_diffndiff2015_Q1, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем нулевую гипотезу о гомоскедастичности
+
+AIC(fixed_diffndiff2015_Q1) # 528.3827
+BIC(fixed_diffndiff2015_Q1) # 538.6176
+RSS(fixed_diffndiff2015_Q1) # 135.0756
+RMSE(fixed_diffndiff2015_Q1$residuals) # 0.7765411
+MAE(fixed_diffndiff2015_Q1$residuals) # 0.5971275
+
+panel_dif2015$residuals_fixed_diffndiff_Q1 = ifelse(!is.na(log(panel_dif2015$q1+1)) & rownames(data.frame(fixed_diffndiff2015_Q1$residuals)) %in% rownames(panel_dif2015), fixed_diffndiff2015_Q1$residuals, NA)
+cor(panel_dif2015$residuals_fixed_diffndiff_Q1, log(panel_dif2015$q1+1), use = 'pairwise.complete.obs')
+
+# эндогенность (тест Хаусмана: p-value>0,05 - экзогенность, ковариация(ошибка, регрессор) = 0 - экзогенность)
+cov_data = na.omit(panel_dif2015)
+cov(cov_data$residuals_fixed_diffndiff_Q1, as.numeric(cov_data$time), method = 'pearson') # менять регрессоры
+plm::phtest(log(q1+1) ~ time*X2015, data = panel_dif2015, vcov = vcovHC)
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_diffndiff2015_Q1)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_diffndiff2015_Q1.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_diffndiff2015_Q1),
+                         Residuals = residuals(fixed_diffndiff2015_Q1)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+
+## Logarithm articles, overall group
+
+```{r}
+panel_data2$control_changed = as.factor(ifelse(panel_data2$control == 0, 1, 0))
+```
+
+### Модель №2. Fixed-Effects 
+
+Уравнение: log(articles) ~ time*X2015
+
+```{r}
+fixed_diffndiff_overall = plm(log(articles) ~ participation*control_changed, data = panel_data2, model = 'within', effect = 'twoways') 
+summary(fixed_diffndiff_overall)
+# Adj. R-Squared: 0.010927 - не зависим от числа регрессоров и используем его: на 1% об. переменные объясняют дисперсию зависимой переменной - это хороший результат
+# ≥ 20% - хорошо норм
+# F-statistic: 48.7838 on 1 and 206 DF, p-value: < 2.22e-16
+# если  p-value: > 0,05 - модель не значима
+
+# тесты на гетероскедастичность
+bptest(fixed_diffndiff_overall, studentize = TRUE) 
+# тест Уайта - частный случай современной модификации теста Бройша-Пагана
+# нулевая гипотеза - гомоскедастичность, p-value > 0.05 -> принимаем альтернативную о гомоскедастичности
+
+AIC(fixed_diffndiff_overall) # 393.0555
+BIC(fixed_diffndiff_overall) # 401.2016
+RSS(fixed_diffndiff_overall) # 62.27803
+RMSE(fixed_diffndiff_overall$residuals) # 0.378811
+MAE(fixed_diffndiff_overall$residuals) # 0.27974
+```
+
+```{r}
+# график распределения остатков
+data.frame(residuals(fixed_diffndiff_overall)) %>% ggplot() + geom_histogram(aes(x = residuals.fixed_diffndiff_overall.))
+
+# график предсказанных значений и остатков
+ggplot(data = data.table(Fitted_values = fitted(fixed_diffndiff_overall),
+                         Residuals = residuals(fixed_diffndiff_overall)),
+       aes(Fitted_values, Residuals)) + 
+  geom_point(size = 1.7) + geom_smooth() +
+  geom_hline(yintercept = 0, color = "red", size = 1) +
+  labs(title = "Fitted values vs Residuals") + theme_classic()
+```
+
+
+
+
+
